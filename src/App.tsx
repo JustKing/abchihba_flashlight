@@ -12,14 +12,29 @@ import {
   Div,
   Button,
   Counter,
+  PullToRefresh,
 } from "@vkontakte/vkui";
 import { useEffect, useState } from "react";
 import "./App.css";
+import bridge from "@vkontakte/vk-bridge";
+
+let flashLightIsAvailable = false;
+
+bridge.subscribe((e: any) => {
+  if (e.detail.type === "VKWebAppFlashGetInfoResult") {
+    if (!e.detail.data?.isActive) {
+      flashLightIsAvailable = false;
+    } else {
+      flashLightIsAvailable = true;
+    }
+  }
+});
 
 function App() {
   const { viewWidth } = useAdaptivity();
-  const [currentFlashId, setCurrentFlashId] = useState(1);
-  const [flashLights] = useState([
+  const [currentFlashId, setCurrentFlashId] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [flashLights, setFlashLights] = useState([
     false,
     false,
     false,
@@ -31,18 +46,32 @@ function App() {
   ]);
 
   useEffect(() => {
+    bridge.send("VKWebAppFlashGetInfo");
     const interval = setInterval(() => {
-      if (currentFlashId === 8) {
-        setCurrentFlashId(1);
+      if (flashLights[currentFlashId]) {
+        bridge.send("VKWebAppFlashSetLevel", { level: 1 });
       } else {
-        setCurrentFlashId(currentFlashId + 1);
+        bridge.send("VKWebAppFlashSetLevel", { level: 0 });
       }
+      const nextFlashLightId = currentFlashId >= 7 ? 0 : currentFlashId + 1;
+      setCurrentFlashId(nextFlashLightId);
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   });
 
   const changeActive = (id: number): any => {
     flashLights[id] = !flashLights[id];
+  };
+
+  const onRefresh = () => {
+    setLoading(true);
+    bridge.send("VKWebAppFlashGetInfo");
+    setTimeout(() => {
+      setFlashLights([false, false, false, false, false, false, false, false]);
+      setLoading(false);
+    }, 1000);
   };
 
   return (
@@ -54,34 +83,36 @@ function App() {
               <header>
                 <PanelHeader>Абчихба Бит Фонарик</PanelHeader>
               </header>
-              <main>
-                <Group
-                  header={
-                    <Header mode="secondary">Управление фонариком</Header>
-                  }
-                >
-                  {flashLights.map(
-                    (flashLightState: boolean, index: number) => (
-                      <Div
-                        style={{ display: "flex" }}
-                        key={`flashlightbutton_${index + 1}`}
-                      >
-                        <Button
-                          id={(index + 1).toString()}
-                          mode="outline"
-                          className={`${
-                            currentFlashId === index + 1 ? "light" : ""
-                          } ${flashLightState ? "active" : "not-active"}`}
-                          stretched
-                          size="l"
-                          after={<Counter>{index + 1}</Counter>}
-                          onClick={() => changeActive(index)}
-                        />
-                      </Div>
-                    )
+              <PullToRefresh onRefresh={onRefresh} isFetching={loading}>
+                <main>
+                  {flashLightIsAvailable ? (
+                    <Group
+                      header={
+                        <Header mode="secondary">Управление фонариком</Header>
+                      }
+                    >
+                      {flashLights.map(
+                        (flashLightState: boolean, index: number) => (
+                          <Div key={`flashlightbutton_${index + 1}`}>
+                            <Button
+                              id={(index + 1).toString()}
+                              mode="outline"
+                              className={`${
+                                currentFlashId === index + 1 ? "light" : ""
+                              } ${flashLightState ? "active" : "not-active"}`}
+                              size="s"
+                              after={<Counter>{index + 1}</Counter>}
+                              onClick={() => changeActive(index)}
+                            />
+                          </Div>
+                        )
+                      )}
+                    </Group>
+                  ) : (
+                    <Div>Фонарик недоступен</Div>
                   )}
-                </Group>
-              </main>
+                </main>
+              </PullToRefresh>
             </Panel>
           </View>
         </SplitCol>
