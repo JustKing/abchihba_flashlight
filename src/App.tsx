@@ -93,9 +93,13 @@ function App() {
                     >
                       {flashLights.map(
                         (flashLightState: boolean, index: number) => (
-                          <Div key={`flashlightbutton_${index + 1}`}>
+                          <Div
+                            style={{ display: "flex" }}
+                            key={`flashlightbutton_${index + 1}`}
+                          >
                             <Button
                               id={(index + 1).toString()}
+                              stretched
                               mode="outline"
                               className={`${
                                 currentFlashId === index + 1 ? "light" : ""
