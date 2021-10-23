@@ -52,7 +52,7 @@ function App() {
           <View activePanel="main">
             <Panel id="main">
               <header>
-                <PanelHeader>Абчихба</PanelHeader>
+                <PanelHeader>Абчихба Бит Фонарик</PanelHeader>
               </header>
               <main>
                 <Group
