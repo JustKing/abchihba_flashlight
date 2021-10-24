@@ -13,27 +13,30 @@ import {
   Button,
   Counter,
   PullToRefresh,
+  PanelSpinner
 } from "@vkontakte/vkui";
 import { useEffect, useState } from "react";
 import "./App.css";
 import bridge from "@vkontakte/vk-bridge";
 
-let flashLightIsAvailable = false;
+let flashLightIsAvailable = true; // false
 
 bridge.subscribe((e: any) => {
-  if (e.detail.type === "VKWebAppFlashGetInfoResult") {
-    if (!e.detail.data?.isActive) {
-      flashLightIsAvailable = false;
-    } else {
-      flashLightIsAvailable = true;
-    }
-  }
+  // хз почему не работает проверка доступности фонарика
+  // if (e.detail.type === "VKWebAppFlashGetInfoResult") {
+  //   if (!e.detail.data?.isActive) {
+  //     flashLightIsAvailable = false;
+  //   } else {
+  //     flashLightIsAvailable = true;
+  //   }
+  // }
 });
 
 function App() {
   const { viewWidth } = useAdaptivity();
   const [currentFlashId, setCurrentFlashId] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [firstLoading, setFirstLoading] = useState(true);
   const [flashLights, setFlashLights] = useState([
     false,
     false,
@@ -47,6 +50,11 @@ function App() {
 
   useEffect(() => {
     bridge.send("VKWebAppFlashGetInfo");
+    if (firstLoading) {
+      setTimeout(() => {
+        setFirstLoading(false)
+      }, 1000)
+    }
     const interval = setInterval(() => {
       if (flashLights[currentFlashId]) {
         bridge.send("VKWebAppFlashSetLevel", { level: 1 });
@@ -83,40 +91,44 @@ function App() {
               <header>
                 <PanelHeader>Абчихба Бит Фонарик</PanelHeader>
               </header>
-              <PullToRefresh onRefresh={onRefresh} isFetching={loading}>
-                <main>
-                  {flashLightIsAvailable ? (
-                    <Group
-                      header={
-                        <Header mode="secondary">Управление фонариком</Header>
-                      }
-                    >
-                      {flashLights.map(
-                        (flashLightState: boolean, index: number) => (
-                          <Div
-                            style={{ display: "flex" }}
-                            key={`flashlightbutton_${index + 1}`}
-                          >
-                            <Button
-                              id={(index + 1).toString()}
-                              stretched
-                              mode="outline"
-                              className={`${
-                                currentFlashId === index + 1 ? "light" : ""
-                              } ${flashLightState ? "active" : "not-active"}`}
-                              size="s"
-                              after={<Counter>{index + 1}</Counter>}
-                              onClick={() => changeActive(index)}
-                            />
-                          </Div>
-                        )
-                      )}
-                    </Group>
-                  ) : (
-                    <Div>Фонарик недоступен</Div>
-                  )}
-                </main>
-              </PullToRefresh>
+              {firstLoading ? (
+                <PanelSpinner />
+              ) : (
+                <PullToRefresh onRefresh={onRefresh} isFetching={loading}>
+                  <main>
+                    {flashLightIsAvailable ? (
+                      <Group
+                        header={
+                          <Header mode="secondary">Управление фонариком</Header>
+                        }
+                      >
+                        {flashLights.map(
+                          (flashLightState: boolean, index: number) => (
+                            <Div
+                              style={{ display: "flex" }}
+                              key={`flashlightbutton_${index + 1}`}
+                            >
+                              <Button
+                                id={(index + 1).toString()}
+                                stretched
+                                mode="outline"
+                                className={`${
+                                  currentFlashId === index + 1 ? "light" : ""
+                                } ${flashLightState ? "active" : "not-active"}`}
+                                size="s"
+                                after={<Counter>{index + 1}</Counter>}
+                                onClick={() => changeActive(index)}
+                              />
+                            </Div>
+                          )
+                        )}
+                      </Group>
+                    ) : (
+                      <Div>Фонарик недоступен</Div>
+                    )}
+                  </main>
+                </PullToRefresh>
+              )}
             </Panel>
           </View>
         </SplitCol>
